@@ -8,7 +8,7 @@ import twiiface.TwitterJsonProtocol
 import scala.collection.mutable
 
 
-class StreamProcessorActor extends Actor {
+class StreamProcessorActor extends Actor with TwitterJsonProtocol{
 
   private var buffer = new mutable.StringBuilder()
 
@@ -36,6 +36,6 @@ class StreamProcessorActor extends Actor {
   }
 
   def processTweet(jsonStr: String): Unit = {
-    println(TwitterJsonProtocol.extractTweet(JsonParser(jsonStr).asJsObject))
+    println(TwitterTweetFormat.read(JsonParser(jsonStr)))
   }
 }
