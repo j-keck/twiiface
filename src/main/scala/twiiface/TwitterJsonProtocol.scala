@@ -3,6 +3,7 @@ package twiiface
 import spray.httpx.unmarshalling.{ContentExpected, Deserialized, MalformedContent}
 import spray.json._
 import twiiface.model.{TwitterTweet, TwitterUser}
+import twiiface.search.TwitterSearch.Tweets
 
 trait TwitterJsonProtocol extends DefaultJsonProtocol{
 
@@ -26,9 +27,21 @@ trait TwitterJsonProtocol extends DefaultJsonProtocol{
       json.asJsObject.getFields("id", "user", "text") match {
         case Seq(JsNumber(id), jsUserObj @ JsObject(_), JsString(text)) =>
           TwitterTweet(id.toBigInt, TwitterUserFormat.read(jsUserObj), text)
+        case _ => deserializationError("invalid json")
       }
     }
 
     override def write(obj: TwitterTweet): JsValue = deserializationError("not implemented")
+  }
+
+  implicit object TweetsFormat extends RootJsonFormat[Tweets] {
+    override def read(json: JsValue): Tweets = {
+      json.asJsObject.getFields("statuses") match {
+        case Seq(JsArray(statuses)) => statuses.map(_.convertTo[TwitterTweet])
+        case _ => deserializationError("invalid json")
+      }
+    }
+
+    override def write(obj: Tweets): JsValue = deserializationError("not implemented")
   }
 }
