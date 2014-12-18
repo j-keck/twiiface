@@ -43,7 +43,7 @@ trait TwitterOAuthSupport {
     val method = httpRequest.method.toString().encode
     val url = httpRequest.uri.toString().encode
     val params = oauthParams ++ orgRequestParams map { case (k, v) => s"$k=$v"} mkString "&" encode
-    val sigStr = (method & url & params)
+    val sigStr = method & url & params
     val sig = Base64.encodeBase64String(crypt(sigStr.bytes)).encode
 
     // build OAuth header
@@ -55,7 +55,7 @@ trait TwitterOAuthSupport {
 
 
   private def initCrypt(consumerSecret: String, tokenSecret: String): Bytes => Bytes = {
-    val key = (TwitterConfig.consumerSecret.encode & TwitterConfig.tokenSecret.encode)
+    val key = TwitterConfig.consumerSecret.encode & TwitterConfig.tokenSecret.encode
     val keySpec = new SecretKeySpec(key.bytes, "HmacSHA1")
     val mac = Mac.getInstance("HmacSHA1")
 
