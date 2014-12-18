@@ -8,30 +8,34 @@ import spray.http.MessageChunk
 
 class StreamProcessorWorkerActorSpec extends TestKit(ActorSystem("test")) with FlatSpecLike with Matchers {
 
-  "StreamProcessorActor" should "process a complete message in one 'MessageChunk'" in {
-    withStreamProcessorActor { (spa, sp) =>
+  "StreamProcessorWorkerActor" should "process a complete message in one 'MessageChunk'" in {
+    withStreamProcessorWorkerActor { (spa, sp) =>
       spa ! MessageChunk(msg(1, "test1"))
     }
   }
 
   it should "process a message from two 'MessageChunk's" in {
-    withStreamProcessorActor { (spa, sp) =>
-      spa ! MessageChunk( s"""{"id_str": "2",""")
-      spa ! MessageChunk( s""" "text": "test2"}\r\n""")
+    withStreamProcessorWorkerActor { (spa, sp) =>
+      val (chunk1, chunk2) = msg(2, "test2").splitAt(20)
+      spa ! MessageChunk(chunk1)
+      spa ! MessageChunk(chunk2)
     }
   }
 
   it should "process two messages from one 'MessageChunk'" in {
-    withStreamProcessorActor { (spa, sp) =>
+    withStreamProcessorWorkerActor { (spa, sp) =>
       spa ! MessageChunk(List(msg(3, "test3"), msg(4, "test4")).mkString)
     }
   }
 
 
-  private def msg(id: Int, text: String): String = s"""{"id_str": "$id", "text": "$text"}\r\n"""
+  private def msg(id: Int, text: String): String = {
+    val user = """{"id": 1, "name": "tuser", "description": "duser", "location": ""}"""
+    s"""{"id": $id, "user": $user, "text": "$text"}\r\n"""
+  }
 
-  private def withStreamProcessorActor(f: (ActorRef, StreamProcessorActor) => Unit): Unit = {
-    val spActorRef = TestActorRef[StreamProcessorActor]
+  private def withStreamProcessorWorkerActor(f: (ActorRef, StreamProcessorWorkerActor) => Unit): Unit = {
+    val spActorRef = TestActorRef[StreamProcessorWorkerActor]
     val sp = spActorRef.underlyingActor
     f(spActorRef, sp)
   }

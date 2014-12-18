@@ -1,41 +1,35 @@
 package twiiface.stream
 
-import akka.actor.Actor
-import spray.http.MessageChunk
-import spray.json.JsonParser
+import akka.actor.{Actor, ActorLogging, Props, Terminated}
+import akka.io.IO
+import akka.routing.MurmurHash
+import spray.can.Http
+import spray.client.pipelining._
+import spray.http.HttpRequest
 import twiiface.TwitterJsonProtocol
+import twiiface.stream.StreamProcessorActor.StreamRequest
 
-import scala.collection.mutable
+object StreamProcessorActor {
 
+  case class StreamRequest(request: HttpRequest)
 
-class StreamProcessorActor extends Actor with TwitterJsonProtocol{
+}
 
-  private var buffer = new mutable.StringBuilder()
+class StreamProcessorActor extends Actor with ActorLogging with TwitterJsonProtocol {
 
-  def receive = {
-    case MessageChunk(entity, _) =>
-      val chunk = entity.asString
-      // twitter sends every 30seconds '\r\n' if no data available
-      // to keep the connection open
-      if (chunk != "\r\n")
-        processChunk(chunk)
+  import context.system
+
+  // keep it lazy for testing purposes
+  lazy val io = IO(Http)
+
+  override def receive: Actor.Receive = {
+    case StreamRequest(request) =>
+      val workerName = "worker:" + MurmurHash.stringHash(request.uri.toString)
+      log.info("start new worker for request path: '{}' - worker name: '{}'", request.uri, workerName)
+      val worker = context.actorOf(Props[StreamProcessorWorkerActor], workerName)
+      sendTo(io).withResponsesReceivedBy(worker)(request)
+    case Terminated(child) =>
+      log.warning("child terminated: " + child.path.name)
     case _ =>
-  }
-
-  def processChunk(chunk: String): Unit = {
-    buffer.append(chunk)
-
-    var idx = buffer.indexOf('\r')
-    while (idx != -1) {
-      val (tw, rest) = buffer.splitAt(idx + 1) // +1: inkl \n
-      processTweet(tw.mkString)
-
-      buffer = rest
-      idx = buffer.indexOf('\r')
-    }
-  }
-
-  def processTweet(jsonStr: String): Unit = {
-    println(TwitterTweetFormat.read(JsonParser(jsonStr)))
   }
 }

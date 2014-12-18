@@ -6,6 +6,7 @@ import spray.can.Http
 import spray.client.pipelining._
 import spray.http._
 import twiiface.TwiifaceConfig
+import twiiface.stream.StreamProcessorActor.StreamRequest
 
 object TwitterStream extends TwitterStream with TwiifaceConfig
 
@@ -16,13 +17,11 @@ trait TwitterStream extends TwitterOAuthSupport {
   def byTag(tag: String)(implicit system: ActorSystem) = {
     import system.log
 
-    val io = IO(Http)
-
     val request = Post("https://stream.twitter.com/1.1/statuses/filter.json", FormData(Map("track" -> tag))) ~>
       authorize
 
     val streamProcessor = system.actorOf(Props[StreamProcessorActor])
-    sendTo(io).withResponsesReceivedBy(streamProcessor)(request)
+    streamProcessor ! StreamRequest(request)
   }
 }
 
