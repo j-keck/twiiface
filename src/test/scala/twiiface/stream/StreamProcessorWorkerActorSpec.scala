@@ -6,7 +6,7 @@ import org.scalatest.{FlatSpecLike, Matchers}
 import spray.http.MessageChunk
 
 
-class StreamProcessorActorSpec extends TestKit(ActorSystem("test")) with FlatSpecLike with Matchers {
+class StreamProcessorWorkerActorSpec extends TestKit(ActorSystem("test")) with FlatSpecLike with Matchers {
 
   "StreamProcessorActor" should "process a complete message in one 'MessageChunk'" in {
     withStreamProcessorActor { (spa, sp) =>

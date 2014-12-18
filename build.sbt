@@ -10,9 +10,11 @@ libraryDependencies ++= {
   Seq(
     "com.typesafe.akka"  %% "akka-actor"           % akkaVersion,
     "com.typesafe.akka"  %% "akka-testkit"         % akkaVersion     % "test",
+    "com.typesafe.akka"  %% "akka-slf4j"           % akkaVersion,
     "io.spray"           %% "spray-client"         % sprayVersion      withSources(),
     "io.spray"           %% "spray-json"           % "1.3.1",
-    "commons-codec"       % "commons-codec"        % "1.10",
+    "commons-codec"      %  "commons-codec"        % "1.10",
+    "ch.qos.logback"     %  "logback-classic"      % "1.1.2",
     "org.scalatest"      %% "scalatest"            % "2.2.1"         % "test"
   )
 }
