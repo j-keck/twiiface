@@ -3,10 +3,13 @@ package twiiface.stream
 import akka.actor.Status.Failure
 import akka.actor._
 import akka.testkit.{TestActorRef, TestKit}
-import org.scalatest.concurrent.Eventually
+import org.scalatest.concurrent.{PatienceConfiguration, Eventually}
+import org.scalatest.time.{Span, Second}
 import org.scalatest.{FlatSpecLike, Matchers}
-import spray.http.{HttpMethods, HttpRequest}
+import spray.http.{MessageChunk, HttpMethods, HttpRequest}
 import twiiface.stream.StreamProcessorActor.StreamRequest
+
+import scala.collection.mutable
 
 class StreamProcessorActorSpec extends TestKit(ActorSystem("test")) with FlatSpecLike with Matchers with Eventually{
 
@@ -15,9 +18,9 @@ class StreamProcessorActorSpec extends TestKit(ActorSystem("test")) with FlatSpe
     var done = false
 
     val req = HttpRequest(method = HttpMethods.GET, uri = "/path/to/resource?k1=v1&k2=v2")
-    val streamProcessorActor = TestActorRef(streamProcessorActorWrapper { (msg, child) =>
+    val streamProcessorActor = TestActorRef(streamProcessorActorWrapper { (msg, msgSender) =>
       msg should equal(req)
-      child.path.name should startWith("worker:")
+      msgSender.path.name should startWith("worker:")
       done = true
     })
     streamProcessorActor ! StreamRequest(req)
@@ -26,17 +29,19 @@ class StreamProcessorActorSpec extends TestKit(ActorSystem("test")) with FlatSpe
   }
 
   it should "restart the worker on error" in {
-    var done = false
-
     val req = HttpRequest(method = HttpMethods.GET, uri = "/path/to/resource?k1=v1&k2=v2")
-    val streamProcessorActor = TestActorRef(streamProcessorActorWrapper { (msg, child) =>
-      child ! Failure(new Exception("connection reset"))
 
-      done = true
+    var msgCount = 0
+    val streamProcessorActor = TestActorRef(streamProcessorActorWrapper { (msg, msgSender) =>
+      msg should equal(req)
+
+      // inject Failure message
+      msgSender ! Failure(new Exception("connection reset"))
+      msgCount += 1
     })
     streamProcessorActor ! StreamRequest(req)
 
-    eventually{ done should be(true)}
+    eventually{ msgCount should be > 1 }
   }
 
   private def streamProcessorActorWrapper(onMsg: ((Any, ActorRef) => Unit)) = new StreamProcessorActor {
