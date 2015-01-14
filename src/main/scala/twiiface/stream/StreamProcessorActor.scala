@@ -11,7 +11,7 @@ import twiiface.stream.StreamProcessorActor.StreamRequest
 
 object StreamProcessorActor {
 
-  case class StreamRequest(request: HttpRequest)
+  case class StreamRequest(tag: String, request: HttpRequest)
 
 }
 
@@ -19,19 +19,20 @@ class StreamProcessorActor extends Actor with ActorLogging with TwitterJsonProto
 
   import context.system
 
-  case class Job(request: HttpRequest, worker: ActorRef)
+  case class Job(tag: String, request: HttpRequest, worker: ActorRef)
   var jobs = Seq.empty[Job]
 
   // keep it lazy for testing purposes
   lazy val io = IO(Http)
 
   override def receive: Actor.Receive = {
-    case StreamRequest(request) =>
-      val workerName = "worker:" + MurmurHash.stringHash(request.uri.toString)
-      log.info("start new worker for request path: '{}' - worker name: '{}'", request.uri, workerName)
+    case StreamRequest(tag, request) =>
+
+      val workerName = "worker:" + tag
+      log.info("start new worker - worker name: '{}'", workerName)
       val worker = context.actorOf(Props[StreamProcessorWorkerActor], workerName)
       context.watch(worker)
-      jobs :+= Job(request, worker)
+      jobs :+= Job(tag, request, worker)
       sendTo(io).withResponsesReceivedBy(worker)(request)
     case Terminated(child) =>
       log.warning("child terminated: " + child.path.name)
@@ -39,7 +40,7 @@ class StreamProcessorActor extends Actor with ActorLogging with TwitterJsonProto
       val (job :: Nil, others) = jobs.partition(_.worker == child)
 
       // restart
-      self ! StreamRequest(job.request)
+      self ! StreamRequest(job.tag, job.request)
 
       // update jobs
       jobs = others

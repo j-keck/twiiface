@@ -21,7 +21,7 @@ trait TwitterStream extends TwitterOAuthSupport {
       authorize
 
     val streamProcessor = system.actorOf(Props[StreamProcessorActor])
-    streamProcessor ! StreamRequest(request)
+    streamProcessor ! StreamRequest(tag, request)
   }
 }
 
