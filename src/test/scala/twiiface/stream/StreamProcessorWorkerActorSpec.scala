@@ -1,9 +1,10 @@
 package twiiface.stream
 
-import akka.actor.{ActorRef, ActorSystem}
+import akka.actor.{Props, ActorRef, ActorSystem}
 import akka.testkit.{TestActorRef, TestKit}
 import org.scalatest.{FlatSpecLike, Matchers}
 import spray.http.MessageChunk
+import twiiface.model.TwitterTweet
 
 
 class StreamProcessorWorkerActorSpec extends TestKit(ActorSystem("test")) with FlatSpecLike with Matchers {
@@ -35,7 +36,8 @@ class StreamProcessorWorkerActorSpec extends TestKit(ActorSystem("test")) with F
   }
 
   private def withStreamProcessorWorkerActor(f: (ActorRef, StreamProcessorWorkerActor) => Unit): Unit = {
-    val spActorRef = TestActorRef[StreamProcessorWorkerActor]
+    val spActorProps = Props(classOf[StreamProcessorWorkerActor], (_: TwitterTweet) => ())
+    val spActorRef: TestActorRef[StreamProcessorWorkerActor] = TestActorRef(spActorProps)
     val sp = spActorRef.underlyingActor
     f(spActorRef, sp)
   }

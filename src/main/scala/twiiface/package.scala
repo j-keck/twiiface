@@ -1,9 +1,13 @@
+import twiiface.model.TwitterTweet
 package twiiface {
 
 }
 
 
 package object twiiface {
+  type Tag = String
+
+  type StreamCallback = (Tag, TwitterTweet) => Unit
 
   implicit class StringOps(val str: String) extends AnyVal {
 

@@ -2,16 +2,15 @@ package twiiface.stream
 
 import akka.actor._
 import akka.io.IO
-import akka.routing.MurmurHash
 import spray.can.Http
 import spray.client.pipelining._
 import spray.http.HttpRequest
-import twiiface.TwitterJsonProtocol
 import twiiface.stream.StreamProcessorActor.StreamRequest
+import twiiface._
 
 object StreamProcessorActor {
 
-  case class StreamRequest(tag: String, request: HttpRequest)
+  case class StreamRequest(tag: String, request: HttpRequest, callback: StreamCallback)
 
 }
 
@@ -19,20 +18,20 @@ class StreamProcessorActor extends Actor with ActorLogging with TwitterJsonProto
 
   import context.system
 
-  case class Job(tag: String, request: HttpRequest, worker: ActorRef)
+  case class Job(streamRequest: StreamRequest, request: HttpRequest, worker: ActorRef)
   var jobs = Seq.empty[Job]
 
   // keep it lazy for testing purposes
   lazy val io = IO(Http)
 
   override def receive: Actor.Receive = {
-    case StreamRequest(tag, request) =>
+    case streamRequest @ StreamRequest(tag, request, callback) =>
 
-      val workerName = "worker:" + tag
+      val workerName = "worker:" + tag.encode
       log.info("start new worker - worker name: '{}'", workerName)
-      val worker = context.actorOf(Props[StreamProcessorWorkerActor], workerName)
+      val worker = context.actorOf(StreamProcessorWorkerActor.props(callback.curried(tag)), workerName)
       context.watch(worker)
-      jobs :+= Job(tag, request, worker)
+      jobs :+= Job(streamRequest, request, worker)
       sendTo(io).withResponsesReceivedBy(worker)(request)
     case Terminated(child) =>
       log.warning("child terminated: " + child.path.name)
@@ -40,7 +39,7 @@ class StreamProcessorActor extends Actor with ActorLogging with TwitterJsonProto
       val (job :: Nil, others) = jobs.partition(_.worker == child)
 
       // restart
-      self ! StreamRequest(job.tag, job.request)
+      self ! job.streamRequest
 
       // update jobs
       jobs = others

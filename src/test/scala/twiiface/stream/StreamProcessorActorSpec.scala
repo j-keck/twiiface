@@ -23,7 +23,7 @@ class StreamProcessorActorSpec extends TestKit(ActorSystem("test")) with FlatSpe
       msgSender.path.name should startWith("worker:")
       done = true
     })
-    streamProcessorActor ! StreamRequest("test", req)
+    streamProcessorActor ! StreamRequest("test", req, (_, _) => ())
 
     eventually{ done should be(true)}
   }
@@ -39,7 +39,7 @@ class StreamProcessorActorSpec extends TestKit(ActorSystem("test")) with FlatSpe
       msgSender ! Failure(new Exception("connection reset"))
       msgCount += 1
     })
-    streamProcessorActor ! StreamRequest("test", req)
+    streamProcessorActor ! StreamRequest("test", req, (_, _) => ())
 
     eventually{ msgCount should be > 1 }
   }

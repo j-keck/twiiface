@@ -1,22 +1,27 @@
 package twiiface.stream
 
 import akka.actor.Status.Failure
-import akka.actor.{ActorLogging, Actor}
+import akka.actor.{Props, ActorLogging, Actor}
 import spray.http.MessageChunk
 import spray.json.JsonParser
-import twiiface.TwitterJsonProtocol
+import twiiface.model.TwitterTweet
+import twiiface.{StreamCallback, TwitterJsonProtocol}
 
 
 import scala.collection.mutable
 
-class StreamProcessorWorkerActor extends Actor with ActorLogging with TwitterJsonProtocol {
+object StreamProcessorWorkerActor {
+  def props(callback: TwitterTweet => Unit): Props =
+    Props(classOf[StreamProcessorWorkerActor], callback)
+}
+class StreamProcessorWorkerActor(callback: TwitterTweet => Unit) extends Actor with ActorLogging with TwitterJsonProtocol {
   private var buffer = new mutable.StringBuilder()
 
   def receive = {
     case MessageChunk(entity, _) =>
       val chunk = entity.asString
       // twitter sends every 30seconds '\r\n' if no data available
-      // to keep the connection open
+      // to keep the connection open - ignore this 'keep alive' data
       if (chunk != "\r\n")
         processChunk(chunk)
     case Failure(reason) =>
@@ -41,6 +46,7 @@ class StreamProcessorWorkerActor extends Actor with ActorLogging with TwitterJso
   }
 
   def processTweet(jsonStr: String): Unit = {
-    println(TwitterTweetFormat.read(JsonParser(jsonStr)))
+    val tweet = TwitterTweetFormat.read(JsonParser(jsonStr))
+    callback(tweet)
   }
 }
