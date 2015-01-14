@@ -17,7 +17,8 @@ trait TwitterStream extends TwitterOAuthSupport {
   def byTag(tag: String)(implicit system: ActorSystem) = {
     import system.log
 
-    val request = Post("https://stream.twitter.com/1.1/statuses/filter.json", FormData(Map("track" -> tag))) ~>
+    val request = Post("https://stream.twitter.com/1.1/statuses/filter.json",
+        FormData(Map("track" -> tag, "language" -> "en"))) ~>
       authorize
 
     val streamProcessor = system.actorOf(Props[StreamProcessorActor])
