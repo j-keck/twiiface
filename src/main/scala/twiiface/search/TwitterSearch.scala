@@ -5,8 +5,7 @@ import spray.client.pipelining._
 import spray.http.OAuth2BearerToken
 import spray.httpx.SprayJsonSupport._
 import spray.httpx.encoding._
-import twiiface.TwitterJsonProtocol
-
+import twiiface.{TwitterJsonProtocol, _}
 import twiiface.model._
 
 import scala.concurrent.Future
@@ -40,7 +39,7 @@ object TwitterSearch extends TwitterJsonProtocol {
         decode(Deflate) ~>
         unmarshal[Tweets]
 
-      pipeline(Get(s"https://api.twitter.com/1.1/search/tweets.json?q=$query&lang=en&count=100"))
+      pipeline(Get(s"https://api.twitter.com/1.1/search/tweets.json?q=${query.encode}&lang=en&count=10"))
     }
   }
 
